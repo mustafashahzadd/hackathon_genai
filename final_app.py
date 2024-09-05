@@ -328,7 +328,7 @@ def ath_app():
     st.write("Wait")
     
     def respond_athletes(user_input,multi_turn=False):
-        client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        client = Groq(api_key=os.getenv(st.secrets["GROQ_API_KEY"]))
         chat_completion = client.chat.completions.create(
             messages=[
                 {
