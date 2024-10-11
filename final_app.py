@@ -4,12 +4,18 @@ import os
 import streamlit as st
 from sentence_transformers import SentenceTransformer
 import faiss
-from groq import Groq
+from openai import OpenAI
+import requests
 from dotenv import load_dotenv
 load_dotenv()
 
-# Initialize Groq client assuming that the environment variable is set
-groq_client = Groq()
+aiml_api_key = os.getenv("AIML_API_KEY")  # Fetch the API key from Hugging Face secrets
+base_url = "https://api.aimlapi.com/"
+
+
+# Initialize the AIML API client
+client = OpenAI(api_key=aiml_api_key, base_url=base_url)
+
 
 def gym_app():
     
@@ -105,17 +111,14 @@ def gym_app():
         Ensure the meal options are versatile and easy to prepare, allowing for flexibility throughout the week without being tied to specific days.
         """
 
-        response = groq_client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": "You are a knowledgeable health and fitness advisor. Provide detailed, personalized advice based on the given information."},
-                {"role": "user", "content": prompt}
-            ],
-            model="llama3-70b-8192",
-            temperature=0.7,
-            max_tokens=2000,
+        chat_completion = client.chat.completions.create(
+            model="o1-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=65536 ,
         )
+        response = chat_completion.choices[0].message.content
 
-        return response.choices[0].message.content
+        return chat_completion.choices[0].message.content
 
 
 
@@ -271,17 +274,17 @@ def med_app():
         Ensure the plan is realistic, sustainable, and tailored to the user's preferences and constraints.
         """
 
-        response = groq_client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": "You are a knowledgeable nutritionist and workout planner. Give the user relevant response to their query."},
-                {"role": "user", "content": prompt}
-            ],
-            model="llama3-70b-8192",
-            temperature=0.7,
-            max_tokens=2000,
+       
+        chat_completion = client.chat.completions.create(
+            model="o1-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=65536 ,
         )
+        response = chat_completion.choices[0].message.content
 
-        return response.choices[0].message.content
+        return chat_completion.choices[0].message.content
+
+
 
     # Streamlit UI
     st.title("Personalized Health and Fitness Advisor")
@@ -328,14 +331,16 @@ def ath_app():
     st.write("Wait")
     
     def respond_athletes(user_input,multi_turn=False):
-        client = Groq(api_key=os.getenv(st.secrets["GROQ_API_KEY"]))
+        client = OpenAI(api_key=aiml_api_key, base_url=base_url)
         chat_completion = client.chat.completions.create(
             messages=[
                 {
-                    "role": "system",
+                    "role": "user",
                     "content": f"""
         You are an expert dietitian, nutritionist, and doctor specializing in athletic training and performance enhancement. Your role is to provide comprehensive and tailored diet, nutrition, and workout routines based on the specific characteristics and goals of the athlete. The athlete details are as follows : 
-        If ```{multi_turn}``` respond keeping in mind the previous messages from list 
+        If 
+{multi_turn}
+ respond keeping in mind the previous messages from list 
         - Age: {user_input['age']}
         - Gender: {user_input['gender']}
         - Weight: {user_input['weight']} kg
@@ -348,8 +353,12 @@ def ath_app():
         - Workout Type: {user_input['workout_type']}
         - Additional Details: {user_input['additional_details']}
 
-        Return ```Invalid input``` if any of the above parameters are anomalous or incorrect followed by a brief explanation.
-        Return ```Please provide all the necessary details``` if any of the above parameters are missing except for the injury details and additional details.
+        Return 
+Invalid input
+ if any of the above parameters are anomalous or incorrect followed by a brief explanation.
+        Return 
+Please provide all the necessary details
+ if any of the above parameters are missing except for the injury details and additional details.
         Based on the above information, provide a detailed response that includes:
 
             1. **Customized Diet Plan (for age year old...gender...athlete type...)**:
@@ -376,8 +385,8 @@ def ath_app():
         """
                 }
             ],
-            model="llama3-70b-8192",
-            temperature=0.5,
+            model="o1-mini",
+            max_tokens=65536,
         )
         return chat_completion.choices[0].message.content
 
@@ -423,11 +432,11 @@ st.write("Welcome to your journey to getting fit.")
 st.sidebar.header("Select any one option:")
 model_choice = st.sidebar.selectbox(
     "Which model do you want to use?",
-    ("Gym Assistant", "Athlete Assistant", "Medical Assistant")
+    ("Gym Assistant", "Medical Assistant","Athlete Assistant")
 )
 if model_choice == "Gym Assistant":
     gym_app()
 elif model_choice == "Medical Assistant":
     med_app()
 elif model_choice == "Athlete Assistant":
-    ath_app();        
+    ath_app();         
